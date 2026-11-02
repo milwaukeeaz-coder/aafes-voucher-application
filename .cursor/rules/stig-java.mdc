@@ -1,0 +1,13 @@
+---
+description: Secure coding rules (Application Security and Development STIG themes)
+globs: ["**/*.java","**/*.properties","**/*.html","**/*.sql"]
+alwaysApply: true
+---
+- Never build SQL by concatenating input. Use parameterized queries.
+- Every endpoint that reads or changes a voucher must check that the caller owns it, or has the APPROVER or ADMIN role.
+- Admin endpoints require the ADMIN role. Never return password hashes in any response.
+- No hardcoded secrets. Read secrets from environment variables (admin key: ADMIN_API_KEY).
+- Hash passwords with BCrypt (spring-security-crypto). Never MD5 or SHA-1.
+- Return generic error bodies to clients. Log details server side. Never return stack traces.
+- Log security events with the prefix AUDIT, e.g. log.info("AUDIT user={} action={} target={}", ...). Never log secrets.
+- Validate and bound all request input.

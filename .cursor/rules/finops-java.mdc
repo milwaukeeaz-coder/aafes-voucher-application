@@ -1,0 +1,12 @@
+---
+description: Runtime cost rules
+globs: ["**/*.java","**/*.sql"]
+alwaysApply: true
+---
+- Never load a whole table to filter in Java. Filter, aggregate and page in SQL.
+- No per-row queries inside loops (N+1). Use one JOIN or GROUP BY query.
+- List endpoints must paginate (query params page and size, default size 50) and keep the JSON array response shape.
+- Add indexes in schema.sql for columns used in WHERE or JOIN.
+- No INFO logging inside per-row code paths.
+- Cache expensive read-only aggregates for 60 seconds.
+- State the expected impact of each change (queries per request).

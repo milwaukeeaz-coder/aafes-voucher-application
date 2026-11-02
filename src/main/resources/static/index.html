@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Travel Voucher Service</title>
+<style>
+  :root { --bg:#f4f1ea; --fg:#14181d; --card:#ffffff; --line:#ddd8cc; --accent:#e8590c; --muted:#5b6168; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1419; --fg:#f4f1ea; --card:#1b222b; --line:#2c3541; --muted:#c9c4b8; } }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--fg); font-family:'Helvetica Neue', Arial, sans-serif; }
+  h1 { margin:0 0 4px; font-size:24px; }
+  p.sub { margin:0 0 16px; color:var(--muted); }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  input, button { padding:8px 10px; font-size:14px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  button { background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
+  button.alt { background:var(--card); color:var(--fg); border-color:var(--line); }
+  #status { margin:8px 0; color:var(--muted); font-size:14px; }
+  .wrap { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th, td { padding:8px 12px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
+</style>
+</head>
+<body>
+<h1>Travel Voucher Service</h1>
+<p class="sub">Demo app for the Cursor walkthrough</p>
+<div class="bar">
+  <input id="u" value="alice" aria-label="username">
+  <input id="p" type="password" value="Password1!" aria-label="password">
+  <button id="login">Log in</button>
+  <button id="csv" class="alt">Download CSV</button>
+  <button id="summary" class="alt">Spend summary</button>
+</div>
+<div id="status">Not logged in.</div>
+<div class="wrap"><table id="t"><thead></thead><tbody></tbody></table></div>
+<script>
+let token = null;
+const $ = (id) => document.getElementById(id);
+const dollars = (c) => '$' + (c / 100).toFixed(2);
+const setStatus = (m) => { $('status').textContent = m; };
+
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch(path, Object.assign({}, opts, { headers }));
+}
+
+$('login').onclick = async () => {
+  const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username: $('u').value, password: $('p').value }) });
+  if (!r.ok) { setStatus('Login failed.'); return; }
+  token = (await r.json()).token;
+  setStatus('Loading vouchers...');
+  const t0 = performance.now();
+  const resp = await api('/api/vouchers');
+  const data = await resp.json();
+  const rows = Array.isArray(data) ? data : (data.content || data.items || []);
+  const ms = Math.round(performance.now() - t0);
+  const head = '<tr><th>ID</th><th>Destination</th><th>Start</th><th>End</th><th>Status</th><th>Traveler</th><th>Total</th></tr>';
+  $('t').tHead.innerHTML = head;
+  $('t').tBodies[0].innerHTML = rows.slice(0, 15).map((v) =>
+    '<tr><td>' + v.id + '</td><td>' + v.destination + '</td><td>' + v.startDate + '</td><td>' + v.endDate +
+    '</td><td>' + v.status + '</td><td>' + v.travelerName + '</td><td>' + dollars(v.totalCents) + '</td></tr>').join('');
+  setStatus('Showing 15 of ' + rows.length + ' vouchers. Loaded in ' + ms + ' ms.');
+};
+
+$('csv').onclick = async () => {
+  if (!token) { setStatus('Log in first.'); return; }
+  const r = await api('/api/vouchers/export.csv');
+  if (!r.ok) { setStatus('CSV export is not available yet (HTTP ' + r.status + ').'); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vouchers.csv';
+  a.click();
+  setStatus('CSV downloaded.');
+};
+
+$('summary').onclick = async () => {
+  if (!token) { setStatus('Log in first.'); return; }
+  setStatus('Building summary...');
+  const t0 = performance.now();
+  const r = await api('/api/reports/summary');
+  const d = await r.json();
+  const ms = Math.round(performance.now() - t0);
+  const parts = Object.entries(d.byStatus || {}).map(([k, v]) => k + ': ' + v.count + ' (' + dollars(v.totalCents) + ')');
+  setStatus('Summary in ' + ms + ' ms. ' + parts.join(' | '));
+};
+</script>
+</body>
+</html>
