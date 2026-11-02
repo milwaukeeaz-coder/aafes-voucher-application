@@ -21,3 +21,5 @@ create table line_items (
   category varchar(30) not null,
   amount_cents bigint not null
 );
+create index idx_vouchers_traveler_id on vouchers (traveler_id);
+create index idx_line_items_voucher_id on line_items (voucher_id);

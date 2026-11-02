@@ -2,6 +2,7 @@ package gov.demo.vouchers;
 
 import gov.demo.vouchers.Models.Traveler;
 import gov.demo.vouchers.Models.Voucher;
+import gov.demo.vouchers.Models.VoucherExportRow;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -35,6 +36,27 @@ public class VoucherRepository {
 
     public Optional<Voucher> findById(long id) {
         return jdbc.query("select * from vouchers where id = ?", VOUCHER, id).stream().findFirst();
+    }
+
+    /**
+     * Caller's vouchers for CSV export, one grouped query.
+     * Expected impact: 1 query per request (no per-voucher lookups).
+     */
+    public List<VoucherExportRow> findForExport(long travelerId, int limit, int offset) {
+        return jdbc.query("""
+            select v.id, v.destination, v.start_date, v.end_date, v.status, v.daily_rate_cents,
+                   coalesce(sum(li.amount_cents), 0) as line_items_cents
+            from vouchers v
+            left join line_items li on li.voucher_id = v.id
+            where v.traveler_id = ?
+            group by v.id, v.destination, v.start_date, v.end_date, v.status, v.daily_rate_cents
+            order by v.id
+            limit ? offset ?
+            """, (rs, i) -> new VoucherExportRow(
+            rs.getLong("id"), rs.getString("destination"),
+            rs.getDate("start_date").toLocalDate(), rs.getDate("end_date").toLocalDate(),
+            rs.getString("status"), rs.getLong("daily_rate_cents"), rs.getLong("line_items_cents")),
+            travelerId, limit, offset);
     }
 
     public List<Voucher> searchByDestination(long travelerId, String text) {

@@ -12,4 +12,8 @@ public final class Models {
 
     public record VoucherSummary(long id, String destination, LocalDate startDate, LocalDate endDate,
                                  String status, String travelerName, long totalCents) {}
+
+    /** One voucher row for CSV export. Totals are computed from these fields, not extra queries. */
+    public record VoucherExportRow(long id, String destination, LocalDate startDate, LocalDate endDate,
+                                   String status, long dailyRateCents, long lineItemsCents) {}
 }

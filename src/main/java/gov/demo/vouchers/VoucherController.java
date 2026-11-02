@@ -2,12 +2,17 @@ package gov.demo.vouchers;
 
 import gov.demo.vouchers.Models.Traveler;
 import gov.demo.vouchers.Models.Voucher;
+import gov.demo.vouchers.Models.VoucherExportRow;
 import gov.demo.vouchers.Models.VoucherSummary;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/vouchers")
 public class VoucherController {
+    private static final Logger log = LoggerFactory.getLogger(VoucherController.class);
+    private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 200;
+    private static final int MAX_PAGE = 10_000;
+
     private final VoucherRepository repo;
 
     public VoucherController(VoucherRepository repo) {
@@ -40,6 +50,26 @@ public class VoucherController {
                 v.status(), name, perDiem + items));
         }
         return out;
+    }
+
+    /**
+     * CSV of the logged-in user's vouchers.
+     * Expected impact: 1 SQL query per request (paged join), 0 queries per row.
+     */
+    @GetMapping(value = "/export.csv", produces = "text/csv")
+    public ResponseEntity<String> exportCsv(@RequestAttribute("user") Traveler user,
+                                            @RequestParam(defaultValue = "0") int page,
+                                            @RequestParam(required = false) Integer size) {
+        int pageSize = size == null ? DEFAULT_PAGE_SIZE : size;
+        if (page < 0 || page > MAX_PAGE || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+            return ResponseEntity.badRequest().body("invalid request\n");
+        }
+        List<VoucherExportRow> rows = repo.findForExport(user.id(), pageSize, page * pageSize);
+        log.info("AUDIT user={} action={} target={}", user.username(), "export.csv", "vouchers");
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"vouchers.csv\"")
+            .body(toCsv(rows));
     }
 
     @GetMapping("/search")
@@ -85,5 +115,36 @@ public class VoucherController {
         body.put("id", id);
         body.put("status", "APPROVED");
         return ResponseEntity.ok(body);
+    }
+
+    private static String toCsv(List<VoucherExportRow> rows) {
+        StringBuilder out = new StringBuilder();
+        out.append("id,destination,start,end,status,total\n");
+        for (VoucherExportRow row : rows) {
+            long totalCents = PerDiemCalculator.perDiemCents(row.startDate(), row.endDate(), row.dailyRateCents())
+                + row.lineItemsCents();
+            out.append(row.id()).append(',')
+                .append(csv(row.destination())).append(',')
+                .append(row.startDate()).append(',')
+                .append(row.endDate()).append(',')
+                .append(csv(row.status())).append(',')
+                .append(dollars(totalCents)).append('\n');
+        }
+        return out.toString();
+    }
+
+    private static String dollars(long cents) {
+        long abs = Math.abs(cents);
+        return (cents < 0 ? "-" : "") + (abs / 100) + "." + String.format("%02d", abs % 100);
+    }
+
+    private static String csv(String value) {
+        if (value == null) {
+            return "";
+        }
+        boolean quote = value.indexOf(',') >= 0 || value.indexOf('"') >= 0
+            || value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0;
+        String escaped = value.replace("\"", "\"\"");
+        return quote ? "\"" + escaped + "\"" : escaped;
     }
 }
