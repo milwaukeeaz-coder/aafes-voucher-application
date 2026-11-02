@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: gov.demo.vouchers.PerDiemCalculatorTest
 -------------------------------------------------------------------------------
-Tests run: 4, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 0.066 s <<< FAILURE! -- in gov.demo.vouchers.PerDiemCalculatorTest
-gov.demo.vouchers.PerDiemCalculatorTest.perDiemForThreeDaysAtDailyRate -- Time elapsed: 0.027 s <<< FAILURE!
+Tests run: 4, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 0.044 s <<< FAILURE! -- in gov.demo.vouchers.PerDiemCalculatorTest
+gov.demo.vouchers.PerDiemCalculatorTest.perDiemForThreeDaysAtDailyRate -- Time elapsed: 0.020 s <<< FAILURE!
 org.opentest4j.AssertionFailedError: expected: <48300> but was: <32200>
 	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
 	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
@@ -28,7 +28,7 @@ org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
 
-gov.demo.vouchers.PerDiemCalculatorTest.threeDayTripCountsThreeDays -- Time elapsed: 0.001 s <<< FAILURE!
+gov.demo.vouchers.PerDiemCalculatorTest.threeDayTripCountsThreeDays -- Time elapsed: 0.002 s <<< FAILURE!
 org.opentest4j.AssertionFailedError: expected: <3> but was: <2>
 	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
 	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
